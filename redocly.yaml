@@ -1,0 +1,7 @@
+extends:
+  - recommended
+rules:
+  info-license: off
+  no-unused-components: off
+  # localhost is the actual planned development gateway, not a placeholder domain.
+  no-server-example.com: off

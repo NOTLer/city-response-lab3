@@ -1,0 +1,576 @@
+openapi: 3.0.3
+info:
+  title: notification-service
+  version: 1.0.0
+  description: Контракт учебной системы City Response. Public — только через Gateway;
+    internal — только service JWT. Ошибки application/problem+json. См. README для
+    саги и политик повторов.
+servers:
+- url: http://localhost:8080
+  description: Учебный API Gateway; внутренние маршруты здесь закрыты
+tags:
+- name: public
+  description: Клиентский API через Gateway
+- name: internal
+  description: Межсервисный API в закрытой сети
+security:
+- bearerAuth: []
+paths:
+  /api/v1/notification-preferences:
+    put:
+      tags:
+      - public
+      operationId: setPreferences
+      summary: Настроить собственные уведомления
+      description: Любой авторизованный пользователь. userId берётся из sub JWT; адрес
+        в журнале события не передаётся.
+      parameters:
+      - name: Idempotency-Key
+        in: header
+        required: true
+        description: UUID операции. Ключ связан с caller, method, path и хэшем тела;
+          другое тело с тем же ключом → 409. Хранить ответ минимум 7 суток; бизнес-уникальность
+          dispatchId бессрочна.
+        schema:
+          type: string
+          format: uuid
+        example: 11111111-1111-4111-8111-111111111111
+      responses:
+        '200':
+          description: Успешный результат
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Preferences'
+              example: &id001
+                email: dispatcher@example.com
+                enabled: true
+        '400':
+          description: Некорректный запрос
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: https://example.com/problems/400
+                title: Некорректный запрос
+                status: 400
+                detail: Некорректный запрос
+                instance: /api/v1/notification-preferences
+                traceId: 11111111-1111-4111-8111-111111111111
+        '401':
+          description: Требуется авторизация
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: https://example.com/problems/401
+                title: Требуется авторизация
+                status: 401
+                detail: Требуется авторизация
+                instance: /api/v1/notification-preferences
+                traceId: 11111111-1111-4111-8111-111111111111
+        '403':
+          description: Недостаточно прав
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: https://example.com/problems/403
+                title: Недостаточно прав
+                status: 403
+                detail: Недостаточно прав
+                instance: /api/v1/notification-preferences
+                traceId: 11111111-1111-4111-8111-111111111111
+        '404':
+          description: Объект не найден
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: https://example.com/problems/404
+                title: Объект не найден
+                status: 404
+                detail: Объект не найден
+                instance: /api/v1/notification-preferences
+                traceId: 11111111-1111-4111-8111-111111111111
+        '409':
+          description: Конфликт состояния или Idempotency-Key
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: https://example.com/problems/409
+                title: Конфликт состояния или Idempotency-Key
+                status: 409
+                detail: Конфликт состояния или Idempotency-Key
+                instance: /api/v1/notification-preferences
+                traceId: 11111111-1111-4111-8111-111111111111
+        '503':
+          description: Сервис временно недоступен
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: https://example.com/problems/503
+                title: Сервис временно недоступен
+                status: 503
+                detail: Сервис временно недоступен
+                instance: /api/v1/notification-preferences
+                traceId: 11111111-1111-4111-8111-111111111111
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Preferences'
+            example: *id001
+    get:
+      tags:
+      - public
+      operationId: getPreferences
+      summary: Прочитать собственные настройки
+      description: Любой авторизованный пользователь. Если настройки не созданы, 404;
+        рассылка по умолчанию выключена.
+      parameters: []
+      responses:
+        '200':
+          description: Успешный результат
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Preferences'
+              example: *id001
+        '400':
+          description: Некорректный запрос
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: https://example.com/problems/400
+                title: Некорректный запрос
+                status: 400
+                detail: Некорректный запрос
+                instance: /api/v1/notification-preferences
+                traceId: 11111111-1111-4111-8111-111111111111
+        '401':
+          description: Требуется авторизация
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: https://example.com/problems/401
+                title: Требуется авторизация
+                status: 401
+                detail: Требуется авторизация
+                instance: /api/v1/notification-preferences
+                traceId: 11111111-1111-4111-8111-111111111111
+        '403':
+          description: Недостаточно прав
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: https://example.com/problems/403
+                title: Недостаточно прав
+                status: 403
+                detail: Недостаточно прав
+                instance: /api/v1/notification-preferences
+                traceId: 11111111-1111-4111-8111-111111111111
+        '404':
+          description: Объект не найден
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: https://example.com/problems/404
+                title: Объект не найден
+                status: 404
+                detail: Объект не найден
+                instance: /api/v1/notification-preferences
+                traceId: 11111111-1111-4111-8111-111111111111
+        '409':
+          description: Конфликт состояния или Idempotency-Key
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: https://example.com/problems/409
+                title: Конфликт состояния или Idempotency-Key
+                status: 409
+                detail: Конфликт состояния или Idempotency-Key
+                instance: /api/v1/notification-preferences
+                traceId: 11111111-1111-4111-8111-111111111111
+        '503':
+          description: Сервис временно недоступен
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: https://example.com/problems/503
+                title: Сервис временно недоступен
+                status: 503
+                detail: Сервис временно недоступен
+                instance: /api/v1/notification-preferences
+                traceId: 11111111-1111-4111-8111-111111111111
+  /api/v1/notifications:
+    get:
+      tags:
+      - public
+      operationId: listNotifications
+      summary: Получить историю своих уведомлений
+      description: 'Только собственные записи по sub JWT. Подписчик событий уведомляет
+        создателя назначения: recipientUserId берётся из доверенного события dispatch.'
+      parameters:
+      - name: page
+        in: query
+        description: Номер страницы
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+        example: 1
+      - name: size
+        in: query
+        description: Размер страницы
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+        example: 20
+      responses:
+        '200':
+          description: Успешный результат
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationList'
+              example:
+                items:
+                - &id002
+                  id: 11111111-1111-4111-8111-111111111111
+                  userId: 11111111-1111-4111-8111-111111111111
+                  dispatchId: 11111111-1111-4111-8111-111111111111
+                  eventType: dispatch.confirmed
+                  status: PENDING
+                  attempts: 1
+                  createdAt: '2026-10-30T16:00:00Z'
+                page: 1
+                size: 20
+                total: 1
+        '400':
+          description: Некорректный запрос
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: https://example.com/problems/400
+                title: Некорректный запрос
+                status: 400
+                detail: Некорректный запрос
+                instance: /api/v1/notifications
+                traceId: 11111111-1111-4111-8111-111111111111
+        '401':
+          description: Требуется авторизация
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: https://example.com/problems/401
+                title: Требуется авторизация
+                status: 401
+                detail: Требуется авторизация
+                instance: /api/v1/notifications
+                traceId: 11111111-1111-4111-8111-111111111111
+        '403':
+          description: Недостаточно прав
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: https://example.com/problems/403
+                title: Недостаточно прав
+                status: 403
+                detail: Недостаточно прав
+                instance: /api/v1/notifications
+                traceId: 11111111-1111-4111-8111-111111111111
+        '404':
+          description: Объект не найден
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: https://example.com/problems/404
+                title: Объект не найден
+                status: 404
+                detail: Объект не найден
+                instance: /api/v1/notifications
+                traceId: 11111111-1111-4111-8111-111111111111
+        '409':
+          description: Конфликт состояния или Idempotency-Key
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: https://example.com/problems/409
+                title: Конфликт состояния или Idempotency-Key
+                status: 409
+                detail: Конфликт состояния или Idempotency-Key
+                instance: /api/v1/notifications
+                traceId: 11111111-1111-4111-8111-111111111111
+        '503':
+          description: Сервис временно недоступен
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: https://example.com/problems/503
+                title: Сервис временно недоступен
+                status: 503
+                detail: Сервис временно недоступен
+                instance: /api/v1/notifications
+                traceId: 11111111-1111-4111-8111-111111111111
+  /api/v1/notifications/{id}/retry:
+    post:
+      tags:
+      - public
+      operationId: retryNotification
+      summary: Повторить неудавшуюся доставку
+      description: Только владелец записи. FAILED → PENDING; SENT → 409. Успех отправки
+        не меняет состояние назначения.
+      parameters:
+      - name: id
+        in: path
+        required: true
+        description: UUID объекта
+        schema:
+          type: string
+          format: uuid
+        example: 11111111-1111-4111-8111-111111111111
+      - name: Idempotency-Key
+        in: header
+        required: true
+        description: UUID операции. Ключ связан с caller, method, path и хэшем тела;
+          другое тело с тем же ключом → 409. Хранить ответ минимум 7 суток; бизнес-уникальность
+          dispatchId бессрочна.
+        schema:
+          type: string
+          format: uuid
+        example: 11111111-1111-4111-8111-111111111111
+      responses:
+        '202':
+          description: Операция принята для фонового выполнения
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Notification'
+              example: *id002
+        '400':
+          description: Некорректный запрос
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: https://example.com/problems/400
+                title: Некорректный запрос
+                status: 400
+                detail: Некорректный запрос
+                instance: /api/v1/notifications/11111111-1111-4111-8111-111111111111/retry
+                traceId: 11111111-1111-4111-8111-111111111111
+        '401':
+          description: Требуется авторизация
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: https://example.com/problems/401
+                title: Требуется авторизация
+                status: 401
+                detail: Требуется авторизация
+                instance: /api/v1/notifications/11111111-1111-4111-8111-111111111111/retry
+                traceId: 11111111-1111-4111-8111-111111111111
+        '403':
+          description: Недостаточно прав
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: https://example.com/problems/403
+                title: Недостаточно прав
+                status: 403
+                detail: Недостаточно прав
+                instance: /api/v1/notifications/11111111-1111-4111-8111-111111111111/retry
+                traceId: 11111111-1111-4111-8111-111111111111
+        '404':
+          description: Объект не найден
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: https://example.com/problems/404
+                title: Объект не найден
+                status: 404
+                detail: Объект не найден
+                instance: /api/v1/notifications/11111111-1111-4111-8111-111111111111/retry
+                traceId: 11111111-1111-4111-8111-111111111111
+        '409':
+          description: Конфликт состояния или Idempotency-Key
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: https://example.com/problems/409
+                title: Конфликт состояния или Idempotency-Key
+                status: 409
+                detail: Конфликт состояния или Idempotency-Key
+                instance: /api/v1/notifications/11111111-1111-4111-8111-111111111111/retry
+                traceId: 11111111-1111-4111-8111-111111111111
+        '503':
+          description: Сервис временно недоступен
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: https://example.com/problems/503
+                title: Сервис временно недоступен
+                status: 503
+                detail: Сервис временно недоступен
+                instance: /api/v1/notifications/11111111-1111-4111-8111-111111111111/retry
+                traceId: 11111111-1111-4111-8111-111111111111
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    Preferences:
+      type: object
+      additionalProperties: false
+      required:
+      - email
+      - enabled
+      properties:
+        email:
+          type: string
+          format: email
+        enabled:
+          type: boolean
+      example: *id001
+    Notification:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - userId
+      - dispatchId
+      - eventType
+      - status
+      - attempts
+      - createdAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        userId:
+          type: string
+          format: uuid
+        dispatchId:
+          type: string
+          format: uuid
+        eventType:
+          type: string
+        status:
+          type: string
+          enum:
+          - PENDING
+          - SENT
+          - FAILED
+        attempts:
+          type: integer
+          minimum: 0
+        createdAt:
+          type: string
+          format: date-time
+      example: *id002
+    Problem:
+      type: object
+      additionalProperties: false
+      required:
+      - type
+      - title
+      - status
+      - detail
+      - instance
+      - traceId
+      properties:
+        type:
+          type: string
+          format: uri
+        title:
+          type: string
+        status:
+          type: integer
+          minimum: 400
+          maximum: 599
+        detail:
+          type: string
+        instance:
+          type: string
+        traceId:
+          type: string
+          format: uuid
+      example:
+        type: https://example.com/problems/conflict
+        title: Конфликт состояния
+        status: 409
+        detail: Переход из текущего состояния запрещён
+        instance: /api/v1/dispatches/11111111-1111-4111-8111-111111111111
+        traceId: 11111111-1111-4111-8111-111111111111
+    NotificationList:
+      type: object
+      additionalProperties: false
+      required:
+      - items
+      - page
+      - size
+      - total
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Notification'
+        page:
+          type: integer
+          minimum: 1
+        size:
+          type: integer
+          minimum: 1
+          maximum: 100
+        total:
+          type: integer
+          minimum: 0

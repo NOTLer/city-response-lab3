@@ -1,0 +1,46 @@
+digraph architecture {
+graph [rankdir=TB, bgcolor="white", pad=0.4, nodesep=0.8, ranksep=1.2, fontname="DejaVu Sans", label="City Response — контейнеры и взаимодействия
+Сплошные: запросы; пунктир: события. JWT проверяют сервисы по кэшированным JWKS Keycloak.", labelloc=t, fontsize=20];
+node [shape=box, style="rounded,filled", fillcolor="#eaf2ff", color="#395a86", fontname="DejaVu Sans", fontsize=13, margin="0.18,0.12"];
+edge [fontname="DejaVu Sans", fontsize=10, color="#53647a"];
+client [label="Веб-клиент\nДиспетчер / Бригада / Администратор"];
+gateway [label="API Gateway\nNginx"];
+auth [label="Keycloak",fillcolor="#fff0d8"];
+authdb [label="Keycloak DB\nPostgreSQL",shape=cylinder,fillcolor="#e8f4ec"];
+incident [label="incident-service"];
+resource [label="resource-service"];
+dispatch [label="dispatch-service\nSaga worker"];
+operation [label="operation-service"];
+notification [label="notification-service"];
+broker [label="RabbitMQ\ncity.events",fillcolor="#fff0d8"];
+smtp [label="SMTP\nMailpit",fillcolor="#fff0d8"];
+incidentdb [label="incident DB\nPostgreSQL",shape=cylinder,fillcolor="#e8f4ec"];
+resourcedb [label="resource DB\nPostgreSQL",shape=cylinder,fillcolor="#e8f4ec"];
+dispatchdb [label="dispatch DB\nPostgreSQL",shape=cylinder,fillcolor="#e8f4ec"];
+operationdb [label="operation DB\nPostgreSQL",shape=cylinder,fillcolor="#e8f4ec"];
+notificationdb [label="notification DB\nPostgreSQL",shape=cylinder,fillcolor="#e8f4ec"];
+client -> gateway [label="HTTPS /api/v1/*, /auth/*"];
+gateway -> auth [label="HTTP /auth/* (OIDC)"];
+auth -> authdb [label="SQL"];
+gateway -> incident [label="HTTP /api/v1/incidents[/{id}]"];
+gateway -> resource [label="HTTP /api/v1/teams"];
+gateway -> dispatch [label="HTTP /api/v1/dispatches[/{id}[/cancel]]"];
+gateway -> operation [label="HTTP /api/v1/operations[/{dispatchId}[/*]]"];
+gateway -> notification [label="HTTP /api/v1/notifications[/{id}/retry]\n/api/v1/notification-preferences"];
+dispatch -> incident [label="HTTP GET /internal/v1/incidents/{id}"];
+dispatch -> resource [label="HTTP GET /internal/v1/teams/{id}\nPOST /internal/v1/reservations\nGET /internal/v1/reservations/{dispatchId}\nPOST /internal/v1/reservations/{dispatchId}/confirm\nPOST /internal/v1/reservations/{dispatchId}/release"];
+dispatch -> operation [label="HTTP PUT, GET /internal/v1/operations/{dispatchId}\nPOST /internal/v1/operations/{dispatchId}/cancel"];
+incident -> incidentdb [label="SQL; только собственная БД"];
+resource -> resourcedb [label="SQL; только собственная БД"];
+dispatch -> dispatchdb [label="SQL; только собственная БД"];
+operation -> operationdb [label="SQL; только собственная БД"];
+notification -> notificationdb [label="SQL; только собственная БД"];
+incident -> broker [label="incident.created",style=dashed,color="#986216",fontcolor="#80520e",constraint=false];
+operation -> broker [label="operation.accepted\noperation.rejected\noperation.completed",style=dashed,color="#986216",fontcolor="#80520e",constraint=false];
+dispatch -> broker [label="dispatch.confirmed\ndispatch.cancelled\ndispatch.completed",style=dashed,color="#986216",fontcolor="#80520e",constraint=false];
+broker -> dispatch [label="incident.created\noperation.accepted / rejected / completed",style=dashed,color="#986216",fontcolor="#80520e",constraint=false];
+broker -> operation [label="dispatch.confirmed",style=dashed,color="#986216",fontcolor="#80520e",constraint=false];
+broker -> incident [label="dispatch.completed",style=dashed,color="#986216",fontcolor="#80520e",constraint=false];
+broker -> notification [label="dispatch.confirmed / cancelled / completed",style=dashed,color="#986216",fontcolor="#80520e",constraint=false];
+notification -> smtp [label="SMTP: отправка письма"];
+}

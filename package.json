@@ -1,0 +1,13 @@
+{
+  "name": "city-response-lab3",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Architecture and API contracts for a city incident dispatch system",
+  "scripts": {
+    "lint": "redocly lint api/*-service.yaml",
+    "check": "python scripts/check_contracts.py"
+  },
+  "devDependencies": {
+    "@redocly/cli": "2.72.1"
+  }
+}

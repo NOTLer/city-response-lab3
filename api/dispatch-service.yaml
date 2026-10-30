@@ -1,0 +1,793 @@
+openapi: 3.0.3
+info:
+  title: dispatch-service
+  version: 1.0.0
+  description: Контракт учебной системы City Response. Public — только через Gateway;
+    internal — только service JWT. Ошибки application/problem+json. См. README для
+    саги и политик повторов.
+servers:
+- url: http://localhost:8080
+  description: Учебный API Gateway; внутренние маршруты здесь закрыты
+tags:
+- name: public
+  description: Клиентский API через Gateway
+- name: internal
+  description: Межсервисный API в закрытой сети
+security:
+- bearerAuth: []
+paths:
+  /api/v1/dispatches:
+    post:
+      tags:
+      - public
+      operationId: createDispatch
+      summary: Начать назначение бригады
+      description: Роль dispatcher. Сохраняет PREPARING и возвращает 202, worker выполняет
+        сагу. Повтор не запускает вторую сагу. Один незавершённый dispatch на incidentId.
+      parameters:
+      - name: Idempotency-Key
+        in: header
+        required: true
+        description: UUID операции. Ключ связан с caller, method, path и хэшем тела;
+          другое тело с тем же ключом → 409. Хранить ответ минимум 7 суток; бизнес-уникальность
+          dispatchId бессрочна.
+        schema:
+          type: string
+          format: uuid
+        example: 11111111-1111-4111-8111-111111111111
+      responses:
+        '202':
+          description: Операция принята для фонового выполнения
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Dispatch'
+              example: &id001
+                id: 11111111-1111-4111-8111-111111111111
+                incidentId: 11111111-1111-4111-8111-111111111111
+                teamId: 11111111-1111-4111-8111-111111111111
+                status: CANCELLING
+                acceptBy: '2026-10-30T16:02:00Z'
+                version: 1
+        '400':
+          description: Некорректный запрос
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: https://example.com/problems/400
+                title: Некорректный запрос
+                status: 400
+                detail: Некорректный запрос
+                instance: /api/v1/dispatches
+                traceId: 11111111-1111-4111-8111-111111111111
+        '401':
+          description: Требуется авторизация
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: https://example.com/problems/401
+                title: Требуется авторизация
+                status: 401
+                detail: Требуется авторизация
+                instance: /api/v1/dispatches
+                traceId: 11111111-1111-4111-8111-111111111111
+        '403':
+          description: Недостаточно прав
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: https://example.com/problems/403
+                title: Недостаточно прав
+                status: 403
+                detail: Недостаточно прав
+                instance: /api/v1/dispatches
+                traceId: 11111111-1111-4111-8111-111111111111
+        '404':
+          description: Объект не найден
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: https://example.com/problems/404
+                title: Объект не найден
+                status: 404
+                detail: Объект не найден
+                instance: /api/v1/dispatches
+                traceId: 11111111-1111-4111-8111-111111111111
+        '409':
+          description: Конфликт состояния или Idempotency-Key
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: https://example.com/problems/409
+                title: Конфликт состояния или Idempotency-Key
+                status: 409
+                detail: Конфликт состояния или Idempotency-Key
+                instance: /api/v1/dispatches
+                traceId: 11111111-1111-4111-8111-111111111111
+        '503':
+          description: Сервис временно недоступен
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: https://example.com/problems/503
+                title: Сервис временно недоступен
+                status: 503
+                detail: Сервис временно недоступен
+                instance: /api/v1/dispatches
+                traceId: 11111111-1111-4111-8111-111111111111
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateDispatch'
+            example: &id002
+              incidentId: 11111111-1111-4111-8111-111111111111
+              teamId: 11111111-1111-4111-8111-111111111111
+    get:
+      tags:
+      - public
+      operationId: listDispatches
+      summary: Получить назначения
+      description: Роль dispatcher. Чтение из локального хранилища.
+      parameters:
+      - name: page
+        in: query
+        description: Номер страницы
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+        example: 1
+      - name: size
+        in: query
+        description: Размер страницы
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+        example: 20
+      responses:
+        '200':
+          description: Успешный результат
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DispatchList'
+              example:
+                items:
+                - *id001
+                page: 1
+                size: 20
+                total: 1
+        '400':
+          description: Некорректный запрос
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: https://example.com/problems/400
+                title: Некорректный запрос
+                status: 400
+                detail: Некорректный запрос
+                instance: /api/v1/dispatches
+                traceId: 11111111-1111-4111-8111-111111111111
+        '401':
+          description: Требуется авторизация
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: https://example.com/problems/401
+                title: Требуется авторизация
+                status: 401
+                detail: Требуется авторизация
+                instance: /api/v1/dispatches
+                traceId: 11111111-1111-4111-8111-111111111111
+        '403':
+          description: Недостаточно прав
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: https://example.com/problems/403
+                title: Недостаточно прав
+                status: 403
+                detail: Недостаточно прав
+                instance: /api/v1/dispatches
+                traceId: 11111111-1111-4111-8111-111111111111
+        '404':
+          description: Объект не найден
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: https://example.com/problems/404
+                title: Объект не найден
+                status: 404
+                detail: Объект не найден
+                instance: /api/v1/dispatches
+                traceId: 11111111-1111-4111-8111-111111111111
+        '409':
+          description: Конфликт состояния или Idempotency-Key
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: https://example.com/problems/409
+                title: Конфликт состояния или Idempotency-Key
+                status: 409
+                detail: Конфликт состояния или Idempotency-Key
+                instance: /api/v1/dispatches
+                traceId: 11111111-1111-4111-8111-111111111111
+        '503':
+          description: Сервис временно недоступен
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: https://example.com/problems/503
+                title: Сервис временно недоступен
+                status: 503
+                detail: Сервис временно недоступен
+                instance: /api/v1/dispatches
+                traceId: 11111111-1111-4111-8111-111111111111
+  /api/v1/dispatches/{id}:
+    get:
+      tags:
+      - public
+      operationId: getDispatch
+      summary: Получить состояние саги
+      description: Роль dispatcher; роли team доступно только собственное назначение.
+      parameters:
+      - name: id
+        in: path
+        required: true
+        description: UUID объекта
+        schema:
+          type: string
+          format: uuid
+        example: 11111111-1111-4111-8111-111111111111
+      responses:
+        '200':
+          description: Успешный результат
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Dispatch'
+              example: *id001
+        '400':
+          description: Некорректный запрос
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: https://example.com/problems/400
+                title: Некорректный запрос
+                status: 400
+                detail: Некорректный запрос
+                instance: /api/v1/dispatches/11111111-1111-4111-8111-111111111111
+                traceId: 11111111-1111-4111-8111-111111111111
+        '401':
+          description: Требуется авторизация
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: https://example.com/problems/401
+                title: Требуется авторизация
+                status: 401
+                detail: Требуется авторизация
+                instance: /api/v1/dispatches/11111111-1111-4111-8111-111111111111
+                traceId: 11111111-1111-4111-8111-111111111111
+        '403':
+          description: Недостаточно прав
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: https://example.com/problems/403
+                title: Недостаточно прав
+                status: 403
+                detail: Недостаточно прав
+                instance: /api/v1/dispatches/11111111-1111-4111-8111-111111111111
+                traceId: 11111111-1111-4111-8111-111111111111
+        '404':
+          description: Объект не найден
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: https://example.com/problems/404
+                title: Объект не найден
+                status: 404
+                detail: Объект не найден
+                instance: /api/v1/dispatches/11111111-1111-4111-8111-111111111111
+                traceId: 11111111-1111-4111-8111-111111111111
+        '409':
+          description: Конфликт состояния или Idempotency-Key
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: https://example.com/problems/409
+                title: Конфликт состояния или Idempotency-Key
+                status: 409
+                detail: Конфликт состояния или Idempotency-Key
+                instance: /api/v1/dispatches/11111111-1111-4111-8111-111111111111
+                traceId: 11111111-1111-4111-8111-111111111111
+        '503':
+          description: Сервис временно недоступен
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: https://example.com/problems/503
+                title: Сервис временно недоступен
+                status: 503
+                detail: Сервис временно недоступен
+                instance: /api/v1/dispatches/11111111-1111-4111-8111-111111111111
+                traceId: 11111111-1111-4111-8111-111111111111
+  /api/v1/dispatches/{id}/cancel:
+    post:
+      tags:
+      - public
+      operationId: cancelDispatch
+      summary: Запросить отмену назначения
+      description: Роль dispatcher. PREPARING, AWAITING_ACCEPTANCE или CONFIRMING
+        → CANCELLING. ACTIVE и COMPLETED → 409. Если подтверждение уже зафиксировано,
+        отмена отклоняется. Повтор CANCELLED возвращает текущее состояние.
+      parameters:
+      - name: id
+        in: path
+        required: true
+        description: UUID объекта
+        schema:
+          type: string
+          format: uuid
+        example: 11111111-1111-4111-8111-111111111111
+      - name: Idempotency-Key
+        in: header
+        required: true
+        description: UUID операции. Ключ связан с caller, method, path и хэшем тела;
+          другое тело с тем же ключом → 409. Хранить ответ минимум 7 суток; бизнес-уникальность
+          dispatchId бессрочна.
+        schema:
+          type: string
+          format: uuid
+        example: 11111111-1111-4111-8111-111111111111
+      responses:
+        '202':
+          description: Операция принята для фонового выполнения
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Dispatch'
+              example: *id001
+        '400':
+          description: Некорректный запрос
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: https://example.com/problems/400
+                title: Некорректный запрос
+                status: 400
+                detail: Некорректный запрос
+                instance: /api/v1/dispatches/11111111-1111-4111-8111-111111111111/cancel
+                traceId: 11111111-1111-4111-8111-111111111111
+        '401':
+          description: Требуется авторизация
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: https://example.com/problems/401
+                title: Требуется авторизация
+                status: 401
+                detail: Требуется авторизация
+                instance: /api/v1/dispatches/11111111-1111-4111-8111-111111111111/cancel
+                traceId: 11111111-1111-4111-8111-111111111111
+        '403':
+          description: Недостаточно прав
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: https://example.com/problems/403
+                title: Недостаточно прав
+                status: 403
+                detail: Недостаточно прав
+                instance: /api/v1/dispatches/11111111-1111-4111-8111-111111111111/cancel
+                traceId: 11111111-1111-4111-8111-111111111111
+        '404':
+          description: Объект не найден
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: https://example.com/problems/404
+                title: Объект не найден
+                status: 404
+                detail: Объект не найден
+                instance: /api/v1/dispatches/11111111-1111-4111-8111-111111111111/cancel
+                traceId: 11111111-1111-4111-8111-111111111111
+        '409':
+          description: Конфликт состояния или Idempotency-Key
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: https://example.com/problems/409
+                title: Конфликт состояния или Idempotency-Key
+                status: 409
+                detail: Конфликт состояния или Idempotency-Key
+                instance: /api/v1/dispatches/11111111-1111-4111-8111-111111111111/cancel
+                traceId: 11111111-1111-4111-8111-111111111111
+        '503':
+          description: Сервис временно недоступен
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: https://example.com/problems/503
+                title: Сервис временно недоступен
+                status: 503
+                detail: Сервис временно недоступен
+                instance: /api/v1/dispatches/11111111-1111-4111-8111-111111111111/cancel
+                traceId: 11111111-1111-4111-8111-111111111111
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    CreateDispatch:
+      type: object
+      additionalProperties: false
+      required:
+      - incidentId
+      - teamId
+      properties:
+        incidentId:
+          type: string
+          format: uuid
+        teamId:
+          type: string
+          format: uuid
+      example: *id002
+    Dispatch:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - incidentId
+      - teamId
+      - status
+      - acceptBy
+      - version
+      properties:
+        id:
+          type: string
+          format: uuid
+        incidentId:
+          type: string
+          format: uuid
+        teamId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum:
+          - PREPARING
+          - AWAITING_ACCEPTANCE
+          - CONFIRMING
+          - ACTIVE
+          - CANCELLING
+          - CANCELLED
+          - COMPLETED
+        acceptBy:
+          type: string
+          format: date-time
+        version:
+          type: integer
+          minimum: 1
+      example: *id001
+    Problem:
+      type: object
+      additionalProperties: false
+      required:
+      - type
+      - title
+      - status
+      - detail
+      - instance
+      - traceId
+      properties:
+        type:
+          type: string
+          format: uri
+        title:
+          type: string
+        status:
+          type: integer
+          minimum: 400
+          maximum: 599
+        detail:
+          type: string
+        instance:
+          type: string
+        traceId:
+          type: string
+          format: uuid
+      example:
+        type: https://example.com/problems/conflict
+        title: Конфликт состояния
+        status: 409
+        detail: Переход из текущего состояния запрещён
+        instance: /api/v1/dispatches/11111111-1111-4111-8111-111111111111
+        traceId: 11111111-1111-4111-8111-111111111111
+    DispatchList:
+      type: object
+      additionalProperties: false
+      required:
+      - items
+      - page
+      - size
+      - total
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Dispatch'
+        page:
+          type: integer
+          minimum: 1
+        size:
+          type: integer
+          minimum: 1
+          maximum: 100
+        total:
+          type: integer
+          minimum: 0
+    DispatchConfirmed:
+      type: object
+      additionalProperties: false
+      required:
+      - eventId
+      - eventType
+      - occurredAt
+      - schemaVersion
+      - correlationId
+      - aggregateVersion
+      - payload
+      properties:
+        eventId:
+          type: string
+          format: uuid
+        eventType:
+          type: string
+          enum:
+          - dispatch.confirmed
+        occurredAt:
+          type: string
+          format: date-time
+        schemaVersion:
+          type: integer
+          enum:
+          - 1
+        correlationId:
+          type: string
+          format: uuid
+        aggregateVersion:
+          type: integer
+          minimum: 1
+        payload:
+          type: object
+          additionalProperties: false
+          required:
+          - dispatchId
+          - incidentId
+          - teamId
+          - recipientUserId
+          properties:
+            dispatchId:
+              type: string
+              format: uuid
+            incidentId:
+              type: string
+              format: uuid
+            teamId:
+              type: string
+              format: uuid
+            recipientUserId:
+              type: string
+              format: uuid
+      description: Событие через RabbitMQ; ACK после локальной транзакции.
+      x-exchange: city.events
+      x-routing-key: dispatch.confirmed
+      x-publisher: dispatch-service
+      x-subscribers:
+      - operation-service
+      - notification-service
+      example:
+        eventId: 11111111-1111-4111-8111-111111111111
+        eventType: dispatch.confirmed
+        occurredAt: '2026-10-30T16:00:00Z'
+        schemaVersion: 1
+        correlationId: 11111111-1111-4111-8111-111111111111
+        aggregateVersion: 1
+        payload:
+          dispatchId: 11111111-1111-4111-8111-111111111111
+          incidentId: 11111111-1111-4111-8111-111111111111
+          teamId: 11111111-1111-4111-8111-111111111111
+          recipientUserId: 11111111-1111-4111-8111-111111111111
+    DispatchCancelled:
+      type: object
+      additionalProperties: false
+      required:
+      - eventId
+      - eventType
+      - occurredAt
+      - schemaVersion
+      - correlationId
+      - aggregateVersion
+      - payload
+      properties:
+        eventId:
+          type: string
+          format: uuid
+        eventType:
+          type: string
+          enum:
+          - dispatch.cancelled
+        occurredAt:
+          type: string
+          format: date-time
+        schemaVersion:
+          type: integer
+          enum:
+          - 1
+        correlationId:
+          type: string
+          format: uuid
+        aggregateVersion:
+          type: integer
+          minimum: 1
+        payload:
+          type: object
+          additionalProperties: false
+          required:
+          - dispatchId
+          - incidentId
+          - recipientUserId
+          - reason
+          properties:
+            dispatchId:
+              type: string
+              format: uuid
+            incidentId:
+              type: string
+              format: uuid
+            recipientUserId:
+              type: string
+              format: uuid
+            reason:
+              type: string
+      description: Событие через RabbitMQ; ACK после локальной транзакции.
+      x-exchange: city.events
+      x-routing-key: dispatch.cancelled
+      x-publisher: dispatch-service
+      x-subscribers:
+      - notification-service
+      example:
+        eventId: 11111111-1111-4111-8111-111111111111
+        eventType: dispatch.cancelled
+        occurredAt: '2026-10-30T16:00:00Z'
+        schemaVersion: 1
+        correlationId: 11111111-1111-4111-8111-111111111111
+        aggregateVersion: 1
+        payload:
+          dispatchId: 11111111-1111-4111-8111-111111111111
+          incidentId: 11111111-1111-4111-8111-111111111111
+          recipientUserId: 11111111-1111-4111-8111-111111111111
+          reason: ACCEPTANCE_TIMEOUT
+    DispatchCompleted:
+      type: object
+      additionalProperties: false
+      required:
+      - eventId
+      - eventType
+      - occurredAt
+      - schemaVersion
+      - correlationId
+      - aggregateVersion
+      - payload
+      properties:
+        eventId:
+          type: string
+          format: uuid
+        eventType:
+          type: string
+          enum:
+          - dispatch.completed
+        occurredAt:
+          type: string
+          format: date-time
+        schemaVersion:
+          type: integer
+          enum:
+          - 1
+        correlationId:
+          type: string
+          format: uuid
+        aggregateVersion:
+          type: integer
+          minimum: 1
+        payload:
+          type: object
+          additionalProperties: false
+          required:
+          - dispatchId
+          - incidentId
+          - recipientUserId
+          properties:
+            dispatchId:
+              type: string
+              format: uuid
+            incidentId:
+              type: string
+              format: uuid
+            recipientUserId:
+              type: string
+              format: uuid
+      description: Событие через RabbitMQ; ACK после локальной транзакции.
+      x-exchange: city.events
+      x-routing-key: dispatch.completed
+      x-publisher: dispatch-service
+      x-subscribers:
+      - incident-service
+      - notification-service
+      example:
+        eventId: 11111111-1111-4111-8111-111111111111
+        eventType: dispatch.completed
+        occurredAt: '2026-10-30T16:00:00Z'
+        schemaVersion: 1
+        correlationId: 11111111-1111-4111-8111-111111111111
+        aggregateVersion: 1
+        payload:
+          dispatchId: 11111111-1111-4111-8111-111111111111
+          incidentId: 11111111-1111-4111-8111-111111111111
+          recipientUserId: 11111111-1111-4111-8111-111111111111

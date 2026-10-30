@@ -1,0 +1,661 @@
+openapi: 3.0.3
+info:
+  title: incident-service
+  version: 1.0.0
+  description: Контракт учебной системы City Response. Public — только через Gateway;
+    internal — только service JWT. Ошибки application/problem+json. См. README для
+    саги и политик повторов.
+servers:
+- url: http://localhost:8080
+  description: Учебный API Gateway; внутренние маршруты здесь закрыты
+tags:
+- name: public
+  description: Клиентский API через Gateway
+- name: internal
+  description: Межсервисный API в закрытой сети
+security:
+- bearerAuth: []
+paths:
+  /api/v1/incidents:
+    post:
+      tags:
+      - public
+      operationId: createIncident
+      summary: Зарегистрировать происшествие
+      description: Роль dispatcher. Создаёт OPEN и incident.created в одной транзакции.
+      parameters:
+      - name: Idempotency-Key
+        in: header
+        required: true
+        description: UUID операции. Ключ связан с caller, method, path и хэшем тела;
+          другое тело с тем же ключом → 409. Хранить ответ минимум 7 суток; бизнес-уникальность
+          dispatchId бессрочна.
+        schema:
+          type: string
+          format: uuid
+        example: 11111111-1111-4111-8111-111111111111
+      responses:
+        '201':
+          description: Успешный результат
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Incident'
+              example: &id001
+                id: 11111111-1111-4111-8111-111111111111
+                kind: GAS_LEAK
+                address: Учебный город, улица Примерная, 10
+                description: Учебная заявка о предполагаемой утечке газа
+                priority: HIGH
+                status: OPEN
+                createdAt: '2026-10-30T16:00:00Z'
+        '400':
+          description: Некорректный запрос
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: https://example.com/problems/400
+                title: Некорректный запрос
+                status: 400
+                detail: Некорректный запрос
+                instance: /api/v1/incidents
+                traceId: 11111111-1111-4111-8111-111111111111
+        '401':
+          description: Требуется авторизация
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: https://example.com/problems/401
+                title: Требуется авторизация
+                status: 401
+                detail: Требуется авторизация
+                instance: /api/v1/incidents
+                traceId: 11111111-1111-4111-8111-111111111111
+        '403':
+          description: Недостаточно прав
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: https://example.com/problems/403
+                title: Недостаточно прав
+                status: 403
+                detail: Недостаточно прав
+                instance: /api/v1/incidents
+                traceId: 11111111-1111-4111-8111-111111111111
+        '404':
+          description: Объект не найден
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: https://example.com/problems/404
+                title: Объект не найден
+                status: 404
+                detail: Объект не найден
+                instance: /api/v1/incidents
+                traceId: 11111111-1111-4111-8111-111111111111
+        '409':
+          description: Конфликт состояния или Idempotency-Key
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: https://example.com/problems/409
+                title: Конфликт состояния или Idempotency-Key
+                status: 409
+                detail: Конфликт состояния или Idempotency-Key
+                instance: /api/v1/incidents
+                traceId: 11111111-1111-4111-8111-111111111111
+        '503':
+          description: Сервис временно недоступен
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: https://example.com/problems/503
+                title: Сервис временно недоступен
+                status: 503
+                detail: Сервис временно недоступен
+                instance: /api/v1/incidents
+                traceId: 11111111-1111-4111-8111-111111111111
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateIncident'
+            example: &id002
+              kind: GAS_LEAK
+              address: Учебный город, улица Примерная, 10
+              description: Учебная заявка о предполагаемой утечке газа
+              priority: HIGH
+    get:
+      tags:
+      - public
+      operationId: listIncidents
+      summary: Получить происшествия
+      description: Роль dispatcher. Сортировка createdAt DESC, id DESC.
+      parameters:
+      - name: page
+        in: query
+        description: Номер страницы
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+        example: 1
+      - name: size
+        in: query
+        description: Размер страницы
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+        example: 20
+      responses:
+        '200':
+          description: Успешный результат
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IncidentList'
+              example:
+                items:
+                - *id001
+                page: 1
+                size: 20
+                total: 1
+        '400':
+          description: Некорректный запрос
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: https://example.com/problems/400
+                title: Некорректный запрос
+                status: 400
+                detail: Некорректный запрос
+                instance: /api/v1/incidents
+                traceId: 11111111-1111-4111-8111-111111111111
+        '401':
+          description: Требуется авторизация
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: https://example.com/problems/401
+                title: Требуется авторизация
+                status: 401
+                detail: Требуется авторизация
+                instance: /api/v1/incidents
+                traceId: 11111111-1111-4111-8111-111111111111
+        '403':
+          description: Недостаточно прав
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: https://example.com/problems/403
+                title: Недостаточно прав
+                status: 403
+                detail: Недостаточно прав
+                instance: /api/v1/incidents
+                traceId: 11111111-1111-4111-8111-111111111111
+        '404':
+          description: Объект не найден
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: https://example.com/problems/404
+                title: Объект не найден
+                status: 404
+                detail: Объект не найден
+                instance: /api/v1/incidents
+                traceId: 11111111-1111-4111-8111-111111111111
+        '409':
+          description: Конфликт состояния или Idempotency-Key
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: https://example.com/problems/409
+                title: Конфликт состояния или Idempotency-Key
+                status: 409
+                detail: Конфликт состояния или Idempotency-Key
+                instance: /api/v1/incidents
+                traceId: 11111111-1111-4111-8111-111111111111
+        '503':
+          description: Сервис временно недоступен
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: https://example.com/problems/503
+                title: Сервис временно недоступен
+                status: 503
+                detail: Сервис временно недоступен
+                instance: /api/v1/incidents
+                traceId: 11111111-1111-4111-8111-111111111111
+  /api/v1/incidents/{id}:
+    get:
+      tags:
+      - public
+      operationId: getIncident
+      summary: Прочитать происшествие
+      description: Роль dispatcher.
+      parameters:
+      - name: id
+        in: path
+        required: true
+        description: UUID объекта
+        schema:
+          type: string
+          format: uuid
+        example: 11111111-1111-4111-8111-111111111111
+      responses:
+        '200':
+          description: Успешный результат
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Incident'
+              example: *id001
+        '400':
+          description: Некорректный запрос
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: https://example.com/problems/400
+                title: Некорректный запрос
+                status: 400
+                detail: Некорректный запрос
+                instance: /api/v1/incidents/11111111-1111-4111-8111-111111111111
+                traceId: 11111111-1111-4111-8111-111111111111
+        '401':
+          description: Требуется авторизация
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: https://example.com/problems/401
+                title: Требуется авторизация
+                status: 401
+                detail: Требуется авторизация
+                instance: /api/v1/incidents/11111111-1111-4111-8111-111111111111
+                traceId: 11111111-1111-4111-8111-111111111111
+        '403':
+          description: Недостаточно прав
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: https://example.com/problems/403
+                title: Недостаточно прав
+                status: 403
+                detail: Недостаточно прав
+                instance: /api/v1/incidents/11111111-1111-4111-8111-111111111111
+                traceId: 11111111-1111-4111-8111-111111111111
+        '404':
+          description: Объект не найден
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: https://example.com/problems/404
+                title: Объект не найден
+                status: 404
+                detail: Объект не найден
+                instance: /api/v1/incidents/11111111-1111-4111-8111-111111111111
+                traceId: 11111111-1111-4111-8111-111111111111
+        '409':
+          description: Конфликт состояния или Idempotency-Key
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: https://example.com/problems/409
+                title: Конфликт состояния или Idempotency-Key
+                status: 409
+                detail: Конфликт состояния или Idempotency-Key
+                instance: /api/v1/incidents/11111111-1111-4111-8111-111111111111
+                traceId: 11111111-1111-4111-8111-111111111111
+        '503':
+          description: Сервис временно недоступен
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: https://example.com/problems/503
+                title: Сервис временно недоступен
+                status: 503
+                detail: Сервис временно недоступен
+                instance: /api/v1/incidents/11111111-1111-4111-8111-111111111111
+                traceId: 11111111-1111-4111-8111-111111111111
+  /internal/v1/incidents/{id}:
+    get:
+      tags:
+      - internal
+      operationId: getIncidentInternal
+      summary: Получить снимок происшествия
+      description: Только dispatch-service; источник адреса, типа и приоритета. Снимок
+        сохраняется в назначении.
+      parameters:
+      - name: id
+        in: path
+        required: true
+        description: UUID объекта
+        schema:
+          type: string
+          format: uuid
+        example: 11111111-1111-4111-8111-111111111111
+      responses:
+        '200':
+          description: Успешный результат
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Incident'
+              example: *id001
+        '400':
+          description: Некорректный запрос
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: https://example.com/problems/400
+                title: Некорректный запрос
+                status: 400
+                detail: Некорректный запрос
+                instance: /internal/v1/incidents/11111111-1111-4111-8111-111111111111
+                traceId: 11111111-1111-4111-8111-111111111111
+        '401':
+          description: Требуется авторизация
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: https://example.com/problems/401
+                title: Требуется авторизация
+                status: 401
+                detail: Требуется авторизация
+                instance: /internal/v1/incidents/11111111-1111-4111-8111-111111111111
+                traceId: 11111111-1111-4111-8111-111111111111
+        '403':
+          description: Недостаточно прав
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: https://example.com/problems/403
+                title: Недостаточно прав
+                status: 403
+                detail: Недостаточно прав
+                instance: /internal/v1/incidents/11111111-1111-4111-8111-111111111111
+                traceId: 11111111-1111-4111-8111-111111111111
+        '404':
+          description: Объект не найден
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: https://example.com/problems/404
+                title: Объект не найден
+                status: 404
+                detail: Объект не найден
+                instance: /internal/v1/incidents/11111111-1111-4111-8111-111111111111
+                traceId: 11111111-1111-4111-8111-111111111111
+        '409':
+          description: Конфликт состояния или Idempotency-Key
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: https://example.com/problems/409
+                title: Конфликт состояния или Idempotency-Key
+                status: 409
+                detail: Конфликт состояния или Idempotency-Key
+                instance: /internal/v1/incidents/11111111-1111-4111-8111-111111111111
+                traceId: 11111111-1111-4111-8111-111111111111
+        '503':
+          description: Сервис временно недоступен
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: https://example.com/problems/503
+                title: Сервис временно недоступен
+                status: 503
+                detail: Сервис временно недоступен
+                instance: /internal/v1/incidents/11111111-1111-4111-8111-111111111111
+                traceId: 11111111-1111-4111-8111-111111111111
+      servers:
+      - url: http://incident-service:8000
+        description: Закрытая сеть сервисов
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    CreateIncident:
+      type: object
+      additionalProperties: false
+      required:
+      - kind
+      - address
+      - description
+      - priority
+      properties:
+        kind:
+          type: string
+          enum:
+          - GAS_LEAK
+          - FLOOD
+          - FALLEN_TREE
+        address:
+          type: string
+          minLength: 3
+          maxLength: 300
+        description:
+          type: string
+          minLength: 1
+          maxLength: 2000
+        priority:
+          type: string
+          enum:
+          - LOW
+          - MEDIUM
+          - HIGH
+      example: *id002
+    Incident:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - kind
+      - address
+      - description
+      - priority
+      - status
+      - createdAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        kind:
+          type: string
+          enum:
+          - GAS_LEAK
+          - FLOOD
+          - FALLEN_TREE
+        address:
+          type: string
+        description:
+          type: string
+        priority:
+          type: string
+          enum:
+          - LOW
+          - MEDIUM
+          - HIGH
+        status:
+          type: string
+          enum:
+          - OPEN
+          - CLOSED
+        createdAt:
+          type: string
+          format: date-time
+      example: *id001
+    Problem:
+      type: object
+      additionalProperties: false
+      required:
+      - type
+      - title
+      - status
+      - detail
+      - instance
+      - traceId
+      properties:
+        type:
+          type: string
+          format: uri
+        title:
+          type: string
+        status:
+          type: integer
+          minimum: 400
+          maximum: 599
+        detail:
+          type: string
+        instance:
+          type: string
+        traceId:
+          type: string
+          format: uuid
+      example:
+        type: https://example.com/problems/conflict
+        title: Конфликт состояния
+        status: 409
+        detail: Переход из текущего состояния запрещён
+        instance: /api/v1/dispatches/11111111-1111-4111-8111-111111111111
+        traceId: 11111111-1111-4111-8111-111111111111
+    IncidentList:
+      type: object
+      additionalProperties: false
+      required:
+      - items
+      - page
+      - size
+      - total
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Incident'
+        page:
+          type: integer
+          minimum: 1
+        size:
+          type: integer
+          minimum: 1
+          maximum: 100
+        total:
+          type: integer
+          minimum: 0
+    IncidentCreated:
+      type: object
+      additionalProperties: false
+      required:
+      - eventId
+      - eventType
+      - occurredAt
+      - schemaVersion
+      - correlationId
+      - aggregateVersion
+      - payload
+      properties:
+        eventId:
+          type: string
+          format: uuid
+        eventType:
+          type: string
+          enum:
+          - incident.created
+        occurredAt:
+          type: string
+          format: date-time
+        schemaVersion:
+          type: integer
+          enum:
+          - 1
+        correlationId:
+          type: string
+          format: uuid
+        aggregateVersion:
+          type: integer
+          minimum: 1
+        payload:
+          type: object
+          additionalProperties: false
+          required:
+          - incidentId
+          - priority
+          properties:
+            incidentId:
+              type: string
+              format: uuid
+            priority:
+              type: string
+              enum:
+              - LOW
+              - MEDIUM
+              - HIGH
+      description: Событие через RabbitMQ; ACK после локальной транзакции.
+      x-exchange: city.events
+      x-routing-key: incident.created
+      x-publisher: incident-service
+      x-subscribers:
+      - dispatch-service
+      example:
+        eventId: 11111111-1111-4111-8111-111111111111
+        eventType: incident.created
+        occurredAt: '2026-10-30T16:00:00Z'
+        schemaVersion: 1
+        correlationId: 11111111-1111-4111-8111-111111111111
+        aggregateVersion: 1
+        payload:
+          incidentId: 11111111-1111-4111-8111-111111111111
+          priority: HIGH

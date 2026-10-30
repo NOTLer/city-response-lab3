@@ -1,0 +1,961 @@
+openapi: 3.0.3
+info:
+  title: resource-service
+  version: 1.0.0
+  description: Контракт учебной системы City Response. Public — только через Gateway;
+    internal — только service JWT. Ошибки application/problem+json. См. README для
+    саги и политик повторов.
+servers:
+- url: http://localhost:8080
+  description: Учебный API Gateway; внутренние маршруты здесь закрыты
+tags:
+- name: public
+  description: Клиентский API через Gateway
+- name: internal
+  description: Межсервисный API в закрытой сети
+security:
+- bearerAuth: []
+paths:
+  /api/v1/teams:
+    post:
+      tags:
+      - public
+      operationId: createTeam
+      summary: Добавить бригаду с закреплённым комплектом техники
+      description: Роль resource-admin. В MVP комплект техники неделим и выделяется
+        вместе с бригадой.
+      parameters:
+      - name: Idempotency-Key
+        in: header
+        required: true
+        description: UUID операции. Ключ связан с caller, method, path и хэшем тела;
+          другое тело с тем же ключом → 409. Хранить ответ минимум 7 суток; бизнес-уникальность
+          dispatchId бессрочна.
+        schema:
+          type: string
+          format: uuid
+        example: 11111111-1111-4111-8111-111111111111
+      responses:
+        '201':
+          description: Успешный результат
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Team'
+              example: &id001
+                id: 11111111-1111-4111-8111-111111111111
+                name: Учебная бригада 1
+                capability: GAS
+        '400':
+          description: Некорректный запрос
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: https://example.com/problems/400
+                title: Некорректный запрос
+                status: 400
+                detail: Некорректный запрос
+                instance: /api/v1/teams
+                traceId: 11111111-1111-4111-8111-111111111111
+        '401':
+          description: Требуется авторизация
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: https://example.com/problems/401
+                title: Требуется авторизация
+                status: 401
+                detail: Требуется авторизация
+                instance: /api/v1/teams
+                traceId: 11111111-1111-4111-8111-111111111111
+        '403':
+          description: Недостаточно прав
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: https://example.com/problems/403
+                title: Недостаточно прав
+                status: 403
+                detail: Недостаточно прав
+                instance: /api/v1/teams
+                traceId: 11111111-1111-4111-8111-111111111111
+        '404':
+          description: Объект не найден
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: https://example.com/problems/404
+                title: Объект не найден
+                status: 404
+                detail: Объект не найден
+                instance: /api/v1/teams
+                traceId: 11111111-1111-4111-8111-111111111111
+        '409':
+          description: Конфликт состояния или Idempotency-Key
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: https://example.com/problems/409
+                title: Конфликт состояния или Idempotency-Key
+                status: 409
+                detail: Конфликт состояния или Idempotency-Key
+                instance: /api/v1/teams
+                traceId: 11111111-1111-4111-8111-111111111111
+        '503':
+          description: Сервис временно недоступен
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: https://example.com/problems/503
+                title: Сервис временно недоступен
+                status: 503
+                detail: Сервис временно недоступен
+                instance: /api/v1/teams
+                traceId: 11111111-1111-4111-8111-111111111111
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTeam'
+            example: &id003
+              name: Учебная бригада 1
+              capability: GAS
+    get:
+      tags:
+      - public
+      operationId: listTeams
+      summary: Получить бригады
+      description: Роль dispatcher или resource-admin. Список не гарантирует доступность
+        при последующем резервировании.
+      parameters:
+      - name: page
+        in: query
+        description: Номер страницы
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+        example: 1
+      - name: size
+        in: query
+        description: Размер страницы
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+        example: 20
+      responses:
+        '200':
+          description: Успешный результат
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TeamList'
+              example:
+                items:
+                - *id001
+                page: 1
+                size: 20
+                total: 1
+        '400':
+          description: Некорректный запрос
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: https://example.com/problems/400
+                title: Некорректный запрос
+                status: 400
+                detail: Некорректный запрос
+                instance: /api/v1/teams
+                traceId: 11111111-1111-4111-8111-111111111111
+        '401':
+          description: Требуется авторизация
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: https://example.com/problems/401
+                title: Требуется авторизация
+                status: 401
+                detail: Требуется авторизация
+                instance: /api/v1/teams
+                traceId: 11111111-1111-4111-8111-111111111111
+        '403':
+          description: Недостаточно прав
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: https://example.com/problems/403
+                title: Недостаточно прав
+                status: 403
+                detail: Недостаточно прав
+                instance: /api/v1/teams
+                traceId: 11111111-1111-4111-8111-111111111111
+        '404':
+          description: Объект не найден
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: https://example.com/problems/404
+                title: Объект не найден
+                status: 404
+                detail: Объект не найден
+                instance: /api/v1/teams
+                traceId: 11111111-1111-4111-8111-111111111111
+        '409':
+          description: Конфликт состояния или Idempotency-Key
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: https://example.com/problems/409
+                title: Конфликт состояния или Idempotency-Key
+                status: 409
+                detail: Конфликт состояния или Idempotency-Key
+                instance: /api/v1/teams
+                traceId: 11111111-1111-4111-8111-111111111111
+        '503':
+          description: Сервис временно недоступен
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: https://example.com/problems/503
+                title: Сервис временно недоступен
+                status: 503
+                detail: Сервис временно недоступен
+                instance: /api/v1/teams
+                traceId: 11111111-1111-4111-8111-111111111111
+  /internal/v1/teams/{id}:
+    get:
+      tags:
+      - internal
+      operationId: getTeam
+      summary: Проверить специализацию бригады
+      description: Только dispatch-service. Проверка соответствия GAS_LEAK → GAS,
+        FLOOD → WATER, FALLEN_TREE → RESCUE выполняется в dispatch.
+      parameters:
+      - name: id
+        in: path
+        required: true
+        description: UUID объекта
+        schema:
+          type: string
+          format: uuid
+        example: 11111111-1111-4111-8111-111111111111
+      responses:
+        '200':
+          description: Успешный результат
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Team'
+              example: *id001
+        '400':
+          description: Некорректный запрос
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: https://example.com/problems/400
+                title: Некорректный запрос
+                status: 400
+                detail: Некорректный запрос
+                instance: /internal/v1/teams/11111111-1111-4111-8111-111111111111
+                traceId: 11111111-1111-4111-8111-111111111111
+        '401':
+          description: Требуется авторизация
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: https://example.com/problems/401
+                title: Требуется авторизация
+                status: 401
+                detail: Требуется авторизация
+                instance: /internal/v1/teams/11111111-1111-4111-8111-111111111111
+                traceId: 11111111-1111-4111-8111-111111111111
+        '403':
+          description: Недостаточно прав
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: https://example.com/problems/403
+                title: Недостаточно прав
+                status: 403
+                detail: Недостаточно прав
+                instance: /internal/v1/teams/11111111-1111-4111-8111-111111111111
+                traceId: 11111111-1111-4111-8111-111111111111
+        '404':
+          description: Объект не найден
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: https://example.com/problems/404
+                title: Объект не найден
+                status: 404
+                detail: Объект не найден
+                instance: /internal/v1/teams/11111111-1111-4111-8111-111111111111
+                traceId: 11111111-1111-4111-8111-111111111111
+        '409':
+          description: Конфликт состояния или Idempotency-Key
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: https://example.com/problems/409
+                title: Конфликт состояния или Idempotency-Key
+                status: 409
+                detail: Конфликт состояния или Idempotency-Key
+                instance: /internal/v1/teams/11111111-1111-4111-8111-111111111111
+                traceId: 11111111-1111-4111-8111-111111111111
+        '503':
+          description: Сервис временно недоступен
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: https://example.com/problems/503
+                title: Сервис временно недоступен
+                status: 503
+                detail: Сервис временно недоступен
+                instance: /internal/v1/teams/11111111-1111-4111-8111-111111111111
+                traceId: 11111111-1111-4111-8111-111111111111
+      servers:
+      - url: http://resource-service:8000
+        description: Закрытая сеть сервисов
+  /internal/v1/reservations:
+    post:
+      tags:
+      - internal
+      operationId: reserveTeam
+      summary: Атомарно зарезервировать бригаду
+      description: Только dispatch-service. UNIQUE активного teamId; один резерв на
+        dispatchId. При занятости 409. Повтор той же пары возвращает существующий
+        резерв; RELEASED терминален.
+      parameters:
+      - name: Idempotency-Key
+        in: header
+        required: true
+        description: UUID операции. Ключ связан с caller, method, path и хэшем тела;
+          другое тело с тем же ключом → 409. Хранить ответ минимум 7 суток; бизнес-уникальность
+          dispatchId бессрочна.
+        schema:
+          type: string
+          format: uuid
+        example: 11111111-1111-4111-8111-111111111111
+      responses:
+        '201':
+          description: Успешный результат
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Reservation'
+              example: &id002
+                dispatchId: 11111111-1111-4111-8111-111111111111
+                teamId: 11111111-1111-4111-8111-111111111111
+                status: RELEASED
+                createdAt: '2026-10-30T16:00:00Z'
+        '400':
+          description: Некорректный запрос
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: https://example.com/problems/400
+                title: Некорректный запрос
+                status: 400
+                detail: Некорректный запрос
+                instance: /internal/v1/reservations
+                traceId: 11111111-1111-4111-8111-111111111111
+        '401':
+          description: Требуется авторизация
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: https://example.com/problems/401
+                title: Требуется авторизация
+                status: 401
+                detail: Требуется авторизация
+                instance: /internal/v1/reservations
+                traceId: 11111111-1111-4111-8111-111111111111
+        '403':
+          description: Недостаточно прав
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: https://example.com/problems/403
+                title: Недостаточно прав
+                status: 403
+                detail: Недостаточно прав
+                instance: /internal/v1/reservations
+                traceId: 11111111-1111-4111-8111-111111111111
+        '404':
+          description: Объект не найден
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: https://example.com/problems/404
+                title: Объект не найден
+                status: 404
+                detail: Объект не найден
+                instance: /internal/v1/reservations
+                traceId: 11111111-1111-4111-8111-111111111111
+        '409':
+          description: Конфликт состояния или Idempotency-Key
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: https://example.com/problems/409
+                title: Конфликт состояния или Idempotency-Key
+                status: 409
+                detail: Конфликт состояния или Idempotency-Key
+                instance: /internal/v1/reservations
+                traceId: 11111111-1111-4111-8111-111111111111
+        '503':
+          description: Сервис временно недоступен
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: https://example.com/problems/503
+                title: Сервис временно недоступен
+                status: 503
+                detail: Сервис временно недоступен
+                instance: /internal/v1/reservations
+                traceId: 11111111-1111-4111-8111-111111111111
+      servers:
+      - url: http://resource-service:8000
+        description: Закрытая сеть сервисов
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReserveTeam'
+            example: &id004
+              teamId: 11111111-1111-4111-8111-111111111111
+              dispatchId: 11111111-1111-4111-8111-111111111111
+  /internal/v1/reservations/{dispatchId}:
+    get:
+      tags:
+      - internal
+      operationId: getReservation
+      summary: Уточнить результат резервирования
+      description: Только dispatch-service. Используется после таймаута; 404 не разрешает
+        снять блокировку без записи RELEASED.
+      parameters:
+      - name: dispatchId
+        in: path
+        required: true
+        description: UUID объекта
+        schema:
+          type: string
+          format: uuid
+        example: 11111111-1111-4111-8111-111111111111
+      responses:
+        '200':
+          description: Успешный результат
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Reservation'
+              example: *id002
+        '400':
+          description: Некорректный запрос
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: https://example.com/problems/400
+                title: Некорректный запрос
+                status: 400
+                detail: Некорректный запрос
+                instance: /internal/v1/reservations/11111111-1111-4111-8111-111111111111
+                traceId: 11111111-1111-4111-8111-111111111111
+        '401':
+          description: Требуется авторизация
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: https://example.com/problems/401
+                title: Требуется авторизация
+                status: 401
+                detail: Требуется авторизация
+                instance: /internal/v1/reservations/11111111-1111-4111-8111-111111111111
+                traceId: 11111111-1111-4111-8111-111111111111
+        '403':
+          description: Недостаточно прав
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: https://example.com/problems/403
+                title: Недостаточно прав
+                status: 403
+                detail: Недостаточно прав
+                instance: /internal/v1/reservations/11111111-1111-4111-8111-111111111111
+                traceId: 11111111-1111-4111-8111-111111111111
+        '404':
+          description: Объект не найден
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: https://example.com/problems/404
+                title: Объект не найден
+                status: 404
+                detail: Объект не найден
+                instance: /internal/v1/reservations/11111111-1111-4111-8111-111111111111
+                traceId: 11111111-1111-4111-8111-111111111111
+        '409':
+          description: Конфликт состояния или Idempotency-Key
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: https://example.com/problems/409
+                title: Конфликт состояния или Idempotency-Key
+                status: 409
+                detail: Конфликт состояния или Idempotency-Key
+                instance: /internal/v1/reservations/11111111-1111-4111-8111-111111111111
+                traceId: 11111111-1111-4111-8111-111111111111
+        '503':
+          description: Сервис временно недоступен
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: https://example.com/problems/503
+                title: Сервис временно недоступен
+                status: 503
+                detail: Сервис временно недоступен
+                instance: /internal/v1/reservations/11111111-1111-4111-8111-111111111111
+                traceId: 11111111-1111-4111-8111-111111111111
+      servers:
+      - url: http://resource-service:8000
+        description: Закрытая сеть сервисов
+  /internal/v1/reservations/{dispatchId}/confirm:
+    post:
+      tags:
+      - internal
+      operationId: confirmReservation
+      summary: Подтвердить резерв
+      description: Только dispatch-service. HELD → CONFIRMED; повтор CONFIRMED успешен.
+        RELEASED → 409. Состояние и reserve/release сериализуются по dispatchId.
+      parameters:
+      - name: dispatchId
+        in: path
+        required: true
+        description: UUID объекта
+        schema:
+          type: string
+          format: uuid
+        example: 11111111-1111-4111-8111-111111111111
+      - name: Idempotency-Key
+        in: header
+        required: true
+        description: UUID операции. Ключ связан с caller, method, path и хэшем тела;
+          другое тело с тем же ключом → 409. Хранить ответ минимум 7 суток; бизнес-уникальность
+          dispatchId бессрочна.
+        schema:
+          type: string
+          format: uuid
+        example: 11111111-1111-4111-8111-111111111111
+      responses:
+        '200':
+          description: Успешный результат
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Reservation'
+              example: *id002
+        '400':
+          description: Некорректный запрос
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: https://example.com/problems/400
+                title: Некорректный запрос
+                status: 400
+                detail: Некорректный запрос
+                instance: /internal/v1/reservations/11111111-1111-4111-8111-111111111111/confirm
+                traceId: 11111111-1111-4111-8111-111111111111
+        '401':
+          description: Требуется авторизация
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: https://example.com/problems/401
+                title: Требуется авторизация
+                status: 401
+                detail: Требуется авторизация
+                instance: /internal/v1/reservations/11111111-1111-4111-8111-111111111111/confirm
+                traceId: 11111111-1111-4111-8111-111111111111
+        '403':
+          description: Недостаточно прав
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: https://example.com/problems/403
+                title: Недостаточно прав
+                status: 403
+                detail: Недостаточно прав
+                instance: /internal/v1/reservations/11111111-1111-4111-8111-111111111111/confirm
+                traceId: 11111111-1111-4111-8111-111111111111
+        '404':
+          description: Объект не найден
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: https://example.com/problems/404
+                title: Объект не найден
+                status: 404
+                detail: Объект не найден
+                instance: /internal/v1/reservations/11111111-1111-4111-8111-111111111111/confirm
+                traceId: 11111111-1111-4111-8111-111111111111
+        '409':
+          description: Конфликт состояния или Idempotency-Key
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: https://example.com/problems/409
+                title: Конфликт состояния или Idempotency-Key
+                status: 409
+                detail: Конфликт состояния или Idempotency-Key
+                instance: /internal/v1/reservations/11111111-1111-4111-8111-111111111111/confirm
+                traceId: 11111111-1111-4111-8111-111111111111
+        '503':
+          description: Сервис временно недоступен
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: https://example.com/problems/503
+                title: Сервис временно недоступен
+                status: 503
+                detail: Сервис временно недоступен
+                instance: /internal/v1/reservations/11111111-1111-4111-8111-111111111111/confirm
+                traceId: 11111111-1111-4111-8111-111111111111
+      servers:
+      - url: http://resource-service:8000
+        description: Закрытая сеть сервисов
+  /internal/v1/reservations/{dispatchId}/release:
+    post:
+      tags:
+      - internal
+      operationId: releaseReservation
+      summary: Освободить резерв
+      description: Только dispatch-service. HELD или CONFIRMED → RELEASED. Если резерв
+        ещё не существует, записывает терминальную tombstone по dispatchId, возвращает
+        204; поздний reserve отклоняется 409.
+      parameters:
+      - name: dispatchId
+        in: path
+        required: true
+        description: UUID объекта
+        schema:
+          type: string
+          format: uuid
+        example: 11111111-1111-4111-8111-111111111111
+      - name: Idempotency-Key
+        in: header
+        required: true
+        description: UUID операции. Ключ связан с caller, method, path и хэшем тела;
+          другое тело с тем же ключом → 409. Хранить ответ минимум 7 суток; бизнес-уникальность
+          dispatchId бессрочна.
+        schema:
+          type: string
+          format: uuid
+        example: 11111111-1111-4111-8111-111111111111
+      responses:
+        '200':
+          description: Успешный результат
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Reservation'
+              example: *id002
+        '204':
+          description: Создана tombstone для ещё отсутствующего объекта; тело отсутствует
+        '400':
+          description: Некорректный запрос
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: https://example.com/problems/400
+                title: Некорректный запрос
+                status: 400
+                detail: Некорректный запрос
+                instance: /internal/v1/reservations/11111111-1111-4111-8111-111111111111/release
+                traceId: 11111111-1111-4111-8111-111111111111
+        '401':
+          description: Требуется авторизация
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: https://example.com/problems/401
+                title: Требуется авторизация
+                status: 401
+                detail: Требуется авторизация
+                instance: /internal/v1/reservations/11111111-1111-4111-8111-111111111111/release
+                traceId: 11111111-1111-4111-8111-111111111111
+        '403':
+          description: Недостаточно прав
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: https://example.com/problems/403
+                title: Недостаточно прав
+                status: 403
+                detail: Недостаточно прав
+                instance: /internal/v1/reservations/11111111-1111-4111-8111-111111111111/release
+                traceId: 11111111-1111-4111-8111-111111111111
+        '404':
+          description: Объект не найден
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: https://example.com/problems/404
+                title: Объект не найден
+                status: 404
+                detail: Объект не найден
+                instance: /internal/v1/reservations/11111111-1111-4111-8111-111111111111/release
+                traceId: 11111111-1111-4111-8111-111111111111
+        '409':
+          description: Конфликт состояния или Idempotency-Key
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: https://example.com/problems/409
+                title: Конфликт состояния или Idempotency-Key
+                status: 409
+                detail: Конфликт состояния или Idempotency-Key
+                instance: /internal/v1/reservations/11111111-1111-4111-8111-111111111111/release
+                traceId: 11111111-1111-4111-8111-111111111111
+        '503':
+          description: Сервис временно недоступен
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              example:
+                type: https://example.com/problems/503
+                title: Сервис временно недоступен
+                status: 503
+                detail: Сервис временно недоступен
+                instance: /internal/v1/reservations/11111111-1111-4111-8111-111111111111/release
+                traceId: 11111111-1111-4111-8111-111111111111
+      servers:
+      - url: http://resource-service:8000
+        description: Закрытая сеть сервисов
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    CreateTeam:
+      type: object
+      additionalProperties: false
+      required:
+      - name
+      - capability
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        capability:
+          type: string
+          enum:
+          - GAS
+          - WATER
+          - RESCUE
+      example: *id003
+    Team:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - name
+      - capability
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        capability:
+          type: string
+          enum:
+          - GAS
+          - WATER
+          - RESCUE
+      example: *id001
+    ReserveTeam:
+      type: object
+      additionalProperties: false
+      required:
+      - teamId
+      - dispatchId
+      properties:
+        teamId:
+          type: string
+          format: uuid
+        dispatchId:
+          type: string
+          format: uuid
+      example: *id004
+    Reservation:
+      type: object
+      additionalProperties: false
+      required:
+      - dispatchId
+      - teamId
+      - status
+      - createdAt
+      properties:
+        dispatchId:
+          type: string
+          format: uuid
+        teamId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum:
+          - HELD
+          - CONFIRMED
+          - RELEASED
+        createdAt:
+          type: string
+          format: date-time
+      example: *id002
+    Problem:
+      type: object
+      additionalProperties: false
+      required:
+      - type
+      - title
+      - status
+      - detail
+      - instance
+      - traceId
+      properties:
+        type:
+          type: string
+          format: uri
+        title:
+          type: string
+        status:
+          type: integer
+          minimum: 400
+          maximum: 599
+        detail:
+          type: string
+        instance:
+          type: string
+        traceId:
+          type: string
+          format: uuid
+      example:
+        type: https://example.com/problems/conflict
+        title: Конфликт состояния
+        status: 409
+        detail: Переход из текущего состояния запрещён
+        instance: /api/v1/dispatches/11111111-1111-4111-8111-111111111111
+        traceId: 11111111-1111-4111-8111-111111111111
+    TeamList:
+      type: object
+      additionalProperties: false
+      required:
+      - items
+      - page
+      - size
+      - total
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Team'
+        page:
+          type: integer
+          minimum: 1
+        size:
+          type: integer
+          minimum: 1
+          maximum: 100
+        total:
+          type: integer
+          minimum: 0
